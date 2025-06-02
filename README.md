@@ -18,7 +18,7 @@ streamlit-chat-dashboard
 
 1. Clone the repository:
    ```
-   git clone <repository-url>
+   git clone https://github.com/Triveda-AI-Solutions/JobSearchAgent.git
    ```
 
 2. Create and activate a new conda environment:
