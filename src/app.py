@@ -4,8 +4,8 @@ import streamlit as st
 from utils import perplexity
 
 st.set_page_config(layout="wide")
-st.markdown("<h1 style='color:#4F8BF9; text-align:center;'>Job Search Chat Dashboard</h1>", unsafe_allow_html=True)
-st.markdown("<h3>Welcome to your personalized job search assistant!</h3>", unsafe_allow_html=True)
+st.markdown("<h1 style='color:#4F8BF9; text-align:center;'>Job Search AI Agent</h1>", unsafe_allow_html=True)
+st.markdown("<h3>Welcome to your personalized job search AI assistant!</h3>", unsafe_allow_html=True)
 st.markdown("<p style='color:gray;'>Upload your resume and specify your job preferences to get tailored job listings.</p>", unsafe_allow_html=True)
 
 def display_job(job):
@@ -54,18 +54,12 @@ def main():
             technology_list = perplexity.fetch_all_technologies(st.session_state.perplexity_token,
                                            f"""Fetch all top 10 technologies from the resume content. 
                                            Just give me the keywords of the technology like wordpress, Python, Java etc.. 
+                                           Please give me in numbered list format.
                                              Do not give me any explanation or any other text.
                                            The content is : {text}""")
             technology_list = technology_list["choices"][0]["message"]["content"]
             st.write("**Technologies found in your resume:**")
-            if technology_list:
-                techs = [tech.strip() for tech in technology_list.split(".")[0].split(",")]
-                st.markdown(
-                    " ".join(
-                        [f"<span style='background-color:#e1ecf4; color:#39739d; border-radius:12px; padding:6px 12px; margin:2px; display:inline-block;'>{tech}</span>" for tech in techs]
-                    ),
-                    unsafe_allow_html=True
-                )
+            st.write(technology_list)
 
         except Exception as e:
             st.error(f"Could not read PDF: {e}")
