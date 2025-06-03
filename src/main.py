@@ -7,7 +7,7 @@ import json
 import os
 import dotenv
 import PyPDF2
-from .prompts import JOB_SEARCH_PROMPT, TECH_EXTRACTION_PROMPT
+from prompts import JOB_SEARCH_PROMPT, TECH_EXTRACTION_PROMPT
 # Load environment variables from .env file
 dotenv.load_dotenv()
 PERPLEXITY_API_TOKEN = os.getenv("PERPLEXITY_API_TOKEN")
