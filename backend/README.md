@@ -1,58 +1,61 @@
-# perplexity-app
+# Job Search Backend (FastAPI)
 
 ## Overview
-This project is a FastAPI application designed to provide a robust and efficient API for various functionalities. FastAPI is a modern web framework for building APIs with Python 3.6+ based on standard Python type hints.
+This project is a FastAPI backend for the Job Search AI Agent. It provides API endpoints for extracting technologies from resumes and searching for jobs using Perplexity AI.
 
 ## Project Structure
 ```
-perplexity-app
-├── src
-│   ├── main.py          # Entry point of the FastAPI application
-│   └── __init__.py      # Marks the directory as a Python package
-├── requirements.txt      # Lists the dependencies required for the project
-├── Dockerfile            # Instructions to build a Docker image for the FastAPI application
-└── README.md             # Documentation for the project
+backend/
+├── Dockerfile
+├── README.md
+├── requirements.txt
+└── src/
+    ├── __init__.py
+    └── main.py      # FastAPI backend for job and technology extraction
 ```
 
 ## Setup Instructions
 
-1. **Clone the repository:**
+### Local Setup
+
+1. **Create and activate a new environment:**
    ```bash
-   git clone <repository-url>
-   cd perplexity-app
+   conda create -n job_search_agent python=3.12
+   conda activate job_search_agent
    ```
 
-2. **Install dependencies:**
-   You can install the required dependencies using pip:
+2. **Install backend dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Run the application:**
-   You can run the FastAPI application using the following command:
+3. **Run the FastAPI backend:**
    ```bash
-   uvicorn src.main:app --reload
+   uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
    ```
-   This will start the server at `http://127.0.0.1:8000`.
+   The server will start at `http://0.0.0.0:8000`.
 
-## Usage
-Once the application is running, you can access the API documentation at `http://127.0.0.1:8000/docs`.
-
-## Docker Instructions
-To build and run the Docker container, use the following commands:
+### Docker
 
 1. **Build the Docker image:**
    ```bash
-   docker build -t perplexity-app .
+   docker build -t job_search_backend .
    ```
 
-2. **Run the Docker container:**
+2. **Run the backend container:**
    ```bash
-   docker run -d -p 8000:8000 perplexity-app
+   docker run -p 8000:8000 job_search_backend
    ```
+
+## Usage
+
+- Access the API documentation at `http://localhost:8000/docs` after starting the server.
+- Main endpoints:
+  - `POST /technologies` — Extract technologies from resume content.
+  - `POST /jobs` — Search for jobs based on user preferences.
 
 ## Contributing
-Contributions are welcome! Please feel free to submit a pull request or open an issue for any suggestions or improvements.
+Contributions are welcome! Please submit a pull request or open an issue for suggestions or improvements.
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for more details.
