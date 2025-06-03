@@ -117,5 +117,5 @@ def fetch_jobs_from_pdf(
                        The content is : {text}""",
                       response_class=TechFormat)
     request = ModelRequest(model=model, user_input=", ".join(technology_list["list_of_tech"]))
-    job_list = fetch_all_jobs(request)
+    job_list = fetch_jobs_from_prompt(request)
     return job_list
