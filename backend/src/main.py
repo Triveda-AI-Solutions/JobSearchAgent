@@ -74,6 +74,9 @@ def read_item(item_id: int, q: Optional[str] = None):
 def fetch_all_technologies(request: ModelRequest):
     """
     Fetch all technologies from the resume content using Perplexity AI.
+    model: The model to use for the request. Allowed values are "sonar", "sonar-pro", "llama-3.1-sonar-huge-128k-online"
+    token: The API token for authentication.
+    user_input: The user's input text containing resume content.
     """
     return model_call(request.model, request.token, request.user_input, response_class=TechFormat)
 
@@ -81,5 +84,8 @@ def fetch_all_technologies(request: ModelRequest):
 def fetch_all_jobs(request: ModelRequest):
     """
     Fetch all job listings based on the user's search preferences.
+    model: The model to use for the request. Allowed values are "sonar", "sonar-pro", "llama-3.1-sonar-huge-128k-online"
+    token: The API token for authentication.
+    user_input: The user's input text containing job search preferences.
     """
     return model_call(request.model, request.token, request.user_input, response_class=JobListFormat)
