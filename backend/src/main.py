@@ -77,9 +77,15 @@ def fetch_all_technologies(request: ModelRequest):
     """
     Fetch all technologies from the resume content using Perplexity AI.
     model: The model to use for the request. Allowed values are "sonar", "sonar-pro", "llama-3.1-sonar-huge-128k-online"
-    user_input: The user's input text containing resume content.
+    user_input:  Resume content from which to extract technologies.
     """
-    return model_call(request.model, request.user_input, response_class=TechFormat)
+    return model_call(request.model, 
+                      f"""Fetch all top 10 technologies from the resume content. 
+                                        Just give me the keywords of the technology like wordpress, Python, Java etc.. 
+                                        Please give me the top 10 technologies from the resume.
+                                            Do not give me any explanation or any other text.
+                                        The content is : {request.user_input}""",
+                      response_class=TechFormat)
 
 @app.post("/jobs", response_model=JobListFormat)
 def fetch_all_jobs(request: ModelRequest):
@@ -88,4 +94,8 @@ def fetch_all_jobs(request: ModelRequest):
     model: The model to use for the request. Allowed values are "sonar", "sonar-pro", "llama-3.1-sonar-huge-128k-online"
     user_input: The user's input text containing job search preferences.
     """
-    return model_call(request.model, request.user_input, response_class=JobListFormat)
+    return model_call(request.model, 
+                      f"""My skills are : {request.user_input}
+                         Search all job listings based on my preferences and skills.
+                         Please give me the top 10 job listings based on my skills""", 
+                      response_class=JobListFormat)

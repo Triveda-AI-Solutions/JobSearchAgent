@@ -58,10 +58,7 @@ def main():
         if st.button("Search Jobs", disabled=not job_preferences, 
                     help="Please enter your job preferences to search for jobs.",type="primary"):
             job_list = fetch_all_jobs(model=selected_model,
-                                        user_input=f"""{job_preferences}
-                                        Search all job listings based on my preferences.
-                                        Please give me the top 10 job listings based on my preferences"""
-                                        )
+                                        user_input=job_preferences)
             
     st.markdown("""
                 <div style="display: flex; align-items: center; margin: 24px 0;">
@@ -87,11 +84,7 @@ def main():
             st.error(f"Could not read PDF: {e}")
 
         technology_list = fetch_all_technologies(model=selected_model,
-                                        user_input=f"""Fetch all top 10 technologies from the resume content. 
-                                        Just give me the keywords of the technology like wordpress, Python, Java etc.. 
-                                        Please give me the top 10 technologies from the resume.
-                                            Do not give me any explanation or any other text.
-                                        The content is : {text}"""
+                                        user_input=text
                                         )
         
         with st.expander("Technologies in your resume", expanded=False):
@@ -103,10 +96,7 @@ def main():
         if st.button("Search Jobs", disabled=not technology_list, 
                     help="Please upload your resume to search for jobs.",type="primary"):
             job_list = fetch_all_jobs(model=selected_model,
-                                        user_input=f"""My skills are : {technology_list}
-                                        Search all job listings based on my preferences and skills.
-                                        Please give me the top 10 job listings based on my skills"""
-                                        )
+                                        user_input=( ", ".join(technology_list["list_of_tech"])))
     if job_list != {}:
         cols = st.columns(3)
         for i, job in enumerate(job_list["jobs"]):
