@@ -26,12 +26,18 @@ backend/
 
 2. **Install backend dependencies:**
    ```bash
-   pip install -r requirements.txt
+   pip install -r backend/requirements.txt
    ```
 
-3. **Run the FastAPI backend:**
+3. **Set up environment variables:**
+   - Create a `.env` file in the `backend/` directory with your Perplexity API token:
+     ```
+     PERPLEXITY_API_TOKEN=your_token_here
+     ```
+
+4. **Run the FastAPI backend:**
    ```bash
-   uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+   uvicorn backend.src.main:app --reload --host 0.0.0.0 --port 8000
    ```
    The server will start at `http://0.0.0.0:8000`.
 
@@ -39,12 +45,12 @@ backend/
 
 1. **Build the Docker image:**
    ```bash
-   docker build -t job_search_backend .
+   docker build -t job_search_backend ./backend
    ```
 
 2. **Run the backend container:**
    ```bash
-   docker run -p 8000:8000 job_search_backend
+   docker run --env-file backend/.env -p 8000:8000 job_search_backend
    ```
 
 ## Usage
@@ -53,6 +59,24 @@ backend/
 - Main endpoints:
   - `POST /technologies` — Extract technologies from resume content.
   - `POST /jobs` — Search for jobs based on user preferences.
+
+### Example API Request
+
+**POST /technologies**
+```json
+{
+  "model": "sonar",
+  "user_input": "Resume content here..."
+}
+```
+
+**POST /jobs**
+```json
+{
+  "model": "sonar",
+  "user_input": "Looking for a job in Berlin, 5 years experience, Python developer."
+}
+```
 
 ## Contributing
 Contributions are welcome! Please submit a pull request or open an issue for suggestions or improvements.

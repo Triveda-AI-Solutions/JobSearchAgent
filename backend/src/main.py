@@ -3,6 +3,9 @@ from pydantic import BaseModel
 from typing import List, Optional
 import requests
 import json
+import os
+
+PERPLEXITY_API_TOKEN = os.getenv("PERPLEXITY_API_TOKEN")
 
 app = FastAPI()
 
@@ -10,7 +13,6 @@ app = FastAPI()
 
 class ModelRequest(BaseModel):
     model: str
-    token: str
     user_input: str
 
 class TechFormat(BaseModel):
@@ -30,7 +32,7 @@ class JobListFormat(BaseModel):
 
 PERPLEXITY_URL = "https://api.perplexity.ai/chat/completions"
 
-def model_call(model: str, token: str, user_input: str, response_class: BaseModel):
+def model_call(model: str, user_input: str, response_class: BaseModel):
     payload = {
         "model": model,
         "messages": [
@@ -49,7 +51,7 @@ def model_call(model: str, token: str, user_input: str, response_class: BaseMode
         }
     }
     headers = {
-        "Authorization": f"Bearer {token}",
+        "Authorization": f"Bearer {PERPLEXITY_API_TOKEN}",
         "Content-Type": "application/json"
     }
     try:
@@ -75,17 +77,15 @@ def fetch_all_technologies(request: ModelRequest):
     """
     Fetch all technologies from the resume content using Perplexity AI.
     model: The model to use for the request. Allowed values are "sonar", "sonar-pro", "llama-3.1-sonar-huge-128k-online"
-    token: The API token for authentication.
     user_input: The user's input text containing resume content.
     """
-    return model_call(request.model, request.token, request.user_input, response_class=TechFormat)
+    return model_call(request.model, request.user_input, response_class=TechFormat)
 
 @app.post("/jobs", response_model=JobListFormat)
 def fetch_all_jobs(request: ModelRequest):
     """
     Fetch all job listings based on the user's search preferences.
     model: The model to use for the request. Allowed values are "sonar", "sonar-pro", "llama-3.1-sonar-huge-128k-online"
-    token: The API token for authentication.
     user_input: The user's input text containing job search preferences.
     """
-    return model_call(request.model, request.token, request.user_input, response_class=JobListFormat)
+    return model_call(request.model, request.user_input, response_class=JobListFormat)

@@ -8,19 +8,19 @@ st.markdown("<h3 style='text-align:center;'>Introducing AI-Powered Job Search En
 
 API_BASE_URL = "http://0.0.0.0:8000"
 
-def fetch_all_jobs(model, token, user_input):
+def fetch_all_jobs(model, user_input):
     response = requests.post(
         f"{API_BASE_URL}/jobs",
-        json={"model": model, "token": token, "user_input": user_input},
+        json={"model": model,"user_input": user_input},
         timeout=60
     )
     response.raise_for_status()
     return response.json()
 
-def fetch_all_technologies(model, token, user_input):
+def fetch_all_technologies(model, user_input):
     response = requests.post(
         f"{API_BASE_URL}/technologies",
-        json={"model": model, "token": token, "user_input": user_input},
+        json={"model": model,  "user_input": user_input},
         timeout=60
     )
     response.raise_for_status()
@@ -45,16 +45,6 @@ def display_job(job):
     )
 
 def main():
-    # User input for chat messages
-    with st.sidebar:
-        st.header("User Configuration")
-        st.session_state.perplexity_token = st.text_input("Perplexity Token", type="password")
-
-    if not st.session_state.perplexity_token:
-        st.error("Please enter your Perplexity token in the sidebar to proceed.")
-        return
-
-
     job_list = {}
     col1, col2 = st.columns([3, 1])
     with col1:
@@ -67,7 +57,7 @@ def main():
     with col2:
         if st.button("Search Jobs", disabled=not job_preferences, 
                     help="Please enter your job preferences to search for jobs.",type="primary"):
-            job_list = fetch_all_jobs(model=selected_model, token=st.session_state.perplexity_token,
+            job_list = fetch_all_jobs(model=selected_model,
                                         user_input=f"""{job_preferences}
                                         Search all job listings based on my preferences.
                                         Please give me the top 10 job listings based on my preferences"""
@@ -96,7 +86,7 @@ def main():
         except Exception as e:
             st.error(f"Could not read PDF: {e}")
 
-        technology_list = fetch_all_technologies(model=selected_model, token=st.session_state.perplexity_token,
+        technology_list = fetch_all_technologies(model=selected_model,
                                         user_input=f"""Fetch all top 10 technologies from the resume content. 
                                         Just give me the keywords of the technology like wordpress, Python, Java etc.. 
                                         Please give me the top 10 technologies from the resume.
@@ -112,7 +102,7 @@ def main():
     with col4:
         if st.button("Search Jobs", disabled=not technology_list, 
                     help="Please upload your resume to search for jobs.",type="primary"):
-            job_list = fetch_all_jobs(model=selected_model, token=st.session_state.perplexity_token,
+            job_list = fetch_all_jobs(model=selected_model,
                                         user_input=f"""My skills are : {technology_list}
                                         Search all job listings based on my preferences and skills.
                                         Please give me the top 10 job listings based on my skills"""
