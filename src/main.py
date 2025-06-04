@@ -7,12 +7,20 @@ import json
 import os
 import dotenv
 import PyPDF2
+from fastapi.middleware.cors import CORSMiddleware
 # Load environment variables from .env file
 dotenv.load_dotenv()
 PERPLEXITY_API_TOKEN = os.getenv("PERPLEXITY_API_TOKEN")
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # --- Models ---
 
 class ModelRequest(BaseModel):
@@ -79,7 +87,7 @@ def read_item(item_id: int, q: Optional[str] = None):
 
 
 @app.post("/jobs", response_model=JobListFormat)
-def fetch_jobs_from_prompt(request: ModelRequest):
+async def fetch_jobs_from_prompt(request: ModelRequest):
     """
     Fetch all job listings based on the user's search preferences.
     model: The model to use for the request. Allowed values are "sonar", "sonar-pro", "llama-3.1-sonar-huge-128k-online"
@@ -93,7 +101,7 @@ def fetch_jobs_from_prompt(request: ModelRequest):
 
 
 @app.post("/from_pdf_resume", response_model=JobListFormat)
-def fetch_jobs_from_pdf(
+async def fetch_jobs_from_pdf(
     model: str = Form(...),
     file: UploadFile = File(...)
 ):
@@ -117,5 +125,5 @@ def fetch_jobs_from_pdf(
                        The content is : {text}""",
                       response_class=TechFormat)
     request = ModelRequest(model=model, user_input=", ".join(technology_list["list_of_tech"]))
-    job_list = fetch_jobs_from_prompt(request)
+    job_list = await fetch_jobs_from_prompt(request)
     return job_list
