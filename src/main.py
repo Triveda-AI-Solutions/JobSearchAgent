@@ -25,7 +25,7 @@ app.add_middleware(
 
 class ModelRequest(BaseModel):
     model: str
-    user_input: Optional[str] = None
+    user_input: Optional[str] = "I am looking for a Job. I am open to all job types. "
     type: Optional[str] = "prompt"
 
 
@@ -133,3 +133,24 @@ async def fetch_jobs_from_pdf(
     request = ModelRequest(model=model, user_input=", ".join(technology_list["list_of_tech"]), type="tech_list")
     job_list = await fetch_jobs_from_prompt(request)
     return job_list
+
+
+from datetime import datetime 
+if not os.path.exists("all_resumes"):
+    os.makedirs("all_resumes")
+@app.post("/upload_pdf_resume")
+async def upload_pdf_resume(
+    file: UploadFile = File(...)
+):
+    """
+    Upload a PDF file to the server.
+    file: The PDF file in binary format.
+    """
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_location = f"all_resumes/{file.filename}_{timestamp}.pdf"
+        with open(file_location, "wb") as f:
+            f.write(await file.read())
+        return {"filename": file.filename, "location": file_location}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
