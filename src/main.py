@@ -7,6 +7,8 @@ import json
 import os
 import dotenv
 import PyPDF2
+from docx import Document
+from io import BytesIO
 from fastapi.middleware.cors import CORSMiddleware
 # Load environment variables from .env file
 dotenv.load_dotenv()
@@ -106,20 +108,30 @@ async def fetch_jobs_from_prompt(request: ModelRequest):
                       response_class=JobListFormat)
 
 
-@app.post("/from_pdf_resume", response_model=JobListFormat)
-async def fetch_jobs_from_pdf(
+@app.post("/jobs_from_resume", response_model=JobListFormat)
+async def fetch_jobs_from_resume(
     model: str = Form(...),
     file: UploadFile = File(...)
 ):
     """
-    Convert a PDF file to text.
-    file: The PDF file in binary format.
+    Convert a PDF, DOCX to text and fetch jobs.
+    file: The resume file in binary format.
     """
     try:
-        reader = PyPDF2.PdfReader(file.file)
+        content_type = file.content_type
         text = ""
-        for page in reader.pages:
-            text += page.extract_text() + "\n"
+        file_bytes = await file.read()
+        file_stream = BytesIO(file_bytes)
+        if content_type == "application/pdf":
+            reader = PyPDF2.PdfReader(file_stream)
+            for page in reader.pages:
+                text += page.extract_text() + "\n"
+        elif content_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
+            doc = Document(file_stream)
+            for para in doc.paragraphs:
+                text += para.text + "\n"
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file type")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
@@ -138,17 +150,24 @@ async def fetch_jobs_from_pdf(
 from datetime import datetime 
 if not os.path.exists("all_resumes"):
     os.makedirs("all_resumes")
-@app.post("/upload_pdf_resume")
-async def upload_pdf_resume(
+@app.post("/upload_resume")
+async def upload_resume(
     file: UploadFile = File(...)
 ):
     """
-    Upload a PDF file to the server.
-    file: The PDF file in binary format.
+    Upload a resume file to the server.
+    file: The resume file in binary format.
     """
     try:
+        content_type = file.content_type
+        if content_type == "application/pdf":
+            file_extension = ".pdf"
+        elif content_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
+            file_extension = ".docx"
+        else:
+            file_extension = ""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_location = f"all_resumes/{file.filename}_{timestamp}.pdf"
+        file_location = f"all_resumes/{file.filename}_{timestamp}{file_extension}"
         with open(file_location, "wb") as f:
             f.write(await file.read())
         return {"filename": file.filename, "location": file_location}
