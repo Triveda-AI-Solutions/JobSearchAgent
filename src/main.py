@@ -36,6 +36,7 @@ class Job(BaseModel):
     company_name: str
     job_location: str
     job_url: str
+    salary: str
     job_description: str
 
 class JobListFormat(BaseModel):
