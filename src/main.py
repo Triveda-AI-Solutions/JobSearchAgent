@@ -129,30 +129,6 @@ from datetime import datetime
 if not os.path.exists("all_resumes"):
     os.makedirs("all_resumes")
 
-async def upload_resume(
-    file: UploadFile = File(...)
-):
-    """
-    Upload a resume file to the server.
-    - file: The resume file in binary format.
-    Returns the filename and storage location.
-    """
-    try:
-        content_type = file.content_type
-        if content_type == "application/pdf":
-            file_extension = ".pdf"
-        elif content_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
-            file_extension = ".docx"
-        else:
-            file_extension = ""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_location = f"all_resumes/{file.filename}_{timestamp}{file_extension}"
-        with open(file_location, "wb") as f:
-            f.write(await file.read())
-        return {"filename": file.filename, "location": file_location}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/jobs_from_resume", response_model=JobListFormat)
 async def fetch_jobs_from_resume(
     model: str = Form(...),
@@ -173,16 +149,21 @@ async def fetch_jobs_from_resume(
             reader = PyPDF2.PdfReader(file_stream)
             for page in reader.pages:
                 text += page.extract_text() + "\n"
+            file_extension = ".pdf"
         elif content_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
             doc = Document(file_stream)
             for para in doc.paragraphs:
                 text += para.text + "\n"
+            file_extension = ".docx"
         else:
             raise HTTPException(status_code=400, detail="Unsupported file type")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     # Save the uploaded resume
-    upload_resume(file=file)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_location = f"all_resumes/{file.filename}_{timestamp}{file_extension}"
+    with open(file_location, "wb") as f:
+        f.write(await file.read())
     # Extract top technologies from resume text
     technology_list = model_call(
         model, 
