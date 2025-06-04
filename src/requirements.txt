@@ -3,6 +3,5 @@ uvicorn
 pydantic
 requests
 PyPDF2
-streamlit
 python-dotenv
 python-multipart
