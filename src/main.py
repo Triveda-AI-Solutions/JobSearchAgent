@@ -154,3 +154,15 @@ async def upload_pdf_resume(
         return {"filename": file.filename, "location": file_location}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/get_uploaded_resumes_list")
+async def get_uploaded_resumes():
+    """
+    Get a list of all uploaded resumes.
+    """
+    try:
+        files = os.listdir("all_resumes")
+        return {"files": files}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
