@@ -86,11 +86,7 @@ def model_call(model: str, user_input: str, response_class: BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the FastAPI application!"}
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Optional[str] = None):
-    return {"item_id": item_id, "query": q}
+    return {"message": "Welcome to the JobSearchAgent!"}
 
 
 @app.post("/jobs", response_model=JobListFormat)
@@ -107,6 +103,33 @@ async def fetch_jobs_from_prompt(request: ModelRequest):
                          Please give me the top 50 job listings based on my skills""", 
                       response_class=JobListFormat)
 
+
+from datetime import datetime 
+if not os.path.exists("all_resumes"):
+    os.makedirs("all_resumes")
+def upload_resume(
+    file: UploadFile = File(...)
+):
+    """
+    Upload a resume file to the server.
+    file: The resume file in binary format.
+    """
+    try:
+        content_type = file.content_type
+        if content_type == "application/pdf":
+            file_extension = ".pdf"
+        elif content_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
+            file_extension = ".docx"
+        else:
+            file_extension = ""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_location = f"all_resumes/{file.filename}_{timestamp}{file_extension}"
+        with open(file_location, "wb") as f:
+            f.write(await file.read())
+        return {"filename": file.filename, "location": file_location}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 
 @app.post("/jobs_from_resume", response_model=JobListFormat)
 async def fetch_jobs_from_resume(
@@ -134,7 +157,7 @@ async def fetch_jobs_from_resume(
             raise HTTPException(status_code=400, detail="Unsupported file type")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+    upload_resume(file=file)
     technology_list = model_call(model, 
                       f"""Fetch all top 10 technologies from the resume content. 
                          Just give me the keywords of the technology like wordpress, Python, Java etc.. 
@@ -145,34 +168,6 @@ async def fetch_jobs_from_resume(
     request = ModelRequest(model=model, user_input=", ".join(technology_list["list_of_tech"]), type="tech_list")
     job_list = await fetch_jobs_from_prompt(request)
     return job_list
-
-
-from datetime import datetime 
-if not os.path.exists("all_resumes"):
-    os.makedirs("all_resumes")
-@app.post("/upload_resume")
-async def upload_resume(
-    file: UploadFile = File(...)
-):
-    """
-    Upload a resume file to the server.
-    file: The resume file in binary format.
-    """
-    try:
-        content_type = file.content_type
-        if content_type == "application/pdf":
-            file_extension = ".pdf"
-        elif content_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
-            file_extension = ".docx"
-        else:
-            file_extension = ""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_location = f"all_resumes/{file.filename}_{timestamp}{file_extension}"
-        with open(file_location, "wb") as f:
-            f.write(await file.read())
-        return {"filename": file.filename, "location": file_location}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/get_uploaded_resumes_list")
