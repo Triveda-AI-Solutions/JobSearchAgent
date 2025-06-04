@@ -26,6 +26,7 @@ app.add_middleware(
 class ModelRequest(BaseModel):
     model: str
     user_input: Optional[str] = None
+    type: Optional[str] = "prompt"
 
 
 class TechFormat(BaseModel):
@@ -37,6 +38,9 @@ class Job(BaseModel):
     job_location: str
     job_url: str
     salary: str
+    skills: List[str]
+    job_type: str
+    education_qualification: str
     job_description: str
 
 class JobListFormat(BaseModel):
@@ -94,10 +98,11 @@ async def fetch_jobs_from_prompt(request: ModelRequest):
     model: The model to use for the request. Allowed values are "sonar", "sonar-pro", "llama-3.1-sonar-huge-128k-online"
     user_input: The user's input text containing job search preferences.
     """
+    pre_text = "My request is : " if request.type == "prompt" else "I am looking for a Job. My technical skills are : "
     return model_call(request.model, 
-                      f"""My skills are : {request.user_input}
+                      f"""{pre_text} {request.user_input}
                          Search all job listings based on my preferences and skills.
-                         Please give me the top 10 job listings based on my skills""", 
+                         Please give me the top 50 job listings based on my skills""", 
                       response_class=JobListFormat)
 
 
@@ -125,6 +130,6 @@ async def fetch_jobs_from_pdf(
                          Do not give me any explanation or any other text.
                        The content is : {text}""",
                       response_class=TechFormat)
-    request = ModelRequest(model=model, user_input=", ".join(technology_list["list_of_tech"]))
+    request = ModelRequest(model=model, user_input=", ".join(technology_list["list_of_tech"]), type="tech_list")
     job_list = await fetch_jobs_from_prompt(request)
     return job_list
