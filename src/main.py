@@ -7,7 +7,6 @@ import json
 import os
 import dotenv
 import PyPDF2
-from prompts import JOB_SEARCH_PROMPT, TECH_EXTRACTION_PROMPT
 # Load environment variables from .env file
 dotenv.load_dotenv()
 PERPLEXITY_API_TOKEN = os.getenv("PERPLEXITY_API_TOKEN")
@@ -86,8 +85,10 @@ def fetch_jobs_from_prompt(request: ModelRequest):
     model: The model to use for the request. Allowed values are "sonar", "sonar-pro", "llama-3.1-sonar-huge-128k-online"
     user_input: The user's input text containing job search preferences.
     """
-    prompt = JOB_SEARCH_PROMPT.format(skills=request.user_input)
-    return model_call(request.model, prompt, 
+    return model_call(request.model, 
+                      f"""My skills are : {request.user_input}
+                         Search all job listings based on my preferences and skills.
+                         Please give me the top 10 job listings based on my skills""", 
                       response_class=JobListFormat)
 
 
@@ -107,8 +108,14 @@ def fetch_jobs_from_pdf(
             text += page.extract_text() + "\n"
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    prompt = TECH_EXTRACTION_PROMPT.format(resume_text=text)
-    technology_list = model_call(model, prompt, response_class=TechFormat)
+    
+    technology_list = model_call(model, 
+                      f"""Fetch all top 10 technologies from the resume content. 
+                         Just give me the keywords of the technology like wordpress, Python, Java etc.. 
+                         Please give me the top 10 technologies from the resume.
+                         Do not give me any explanation or any other text.
+                       The content is : {text}""",
+                      response_class=TechFormat)
     request = ModelRequest(model=model, user_input=", ".join(technology_list["list_of_tech"]))
     job_list = fetch_jobs_from_prompt(request)
     return job_list
