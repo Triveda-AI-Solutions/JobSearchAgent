@@ -107,7 +107,7 @@ async def fetch_jobs_from_prompt(request: ModelRequest):
 from datetime import datetime 
 if not os.path.exists("all_resumes"):
     os.makedirs("all_resumes")
-def upload_resume(
+async def upload_resume(
     file: UploadFile = File(...)
 ):
     """
