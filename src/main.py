@@ -31,7 +31,7 @@ class ModelRequest(BaseModel):
     """
     Request model for job search prompts.
     """
-    model: str
+    model: str = "sonar-pro"
     user_input: Optional[str] = "I am looking for a Job. I am open to all job types. "
     type: Optional[str] = "prompt"
 
@@ -65,7 +65,7 @@ class JobListFormat(BaseModel):
 
 PERPLEXITY_URL = "https://api.perplexity.ai/chat/completions"
 
-def model_call(model: str, user_input: str, response_class: BaseModel):
+def perplexity_model_call(model: str, user_input: str, response_class: BaseModel):
     """
     Calls the Perplexity API with the given model and user input.
     Returns the response parsed as the specified response_class.
@@ -99,6 +99,44 @@ def model_call(model: str, user_input: str, response_class: BaseModel):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# --- OpenAI API Call Helper --- 
+
+OPENAI_URL = "https://api.openai.com/v1/chat/completions"
+
+def openai_model_call(model: str, user_input: str, response_class: BaseModel):
+    """
+    Calls the OpenAI API with the given model and user input.
+    Returns the response parsed as the specified response_class.
+    """
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "system",
+                "content": "Be precise and concise. Do not give any explanation or any other text. Respond in valid JSON matching the expected schema."
+            },
+            {
+                "role": "user",
+                "content": user_input
+            }
+        ],
+        "temperature": 0.2,
+        "max_tokens": 1024
+    }
+    headers = {
+        "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+        "Content-Type": "application/json"
+    }
+    try:
+        response = requests.post(OPENAI_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        # Expecting the model to return a JSON string in the message content
+        return json.loads(data["choices"][0]["message"]["content"])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # --- FastAPI Endpoints ---
 
 @app.get("/")
@@ -116,11 +154,21 @@ async def fetch_jobs_from_prompt(request: ModelRequest):
     - user_input: The user's input text containing job search preferences.
     """
     pre_text = "My request is : " if request.type == "prompt" else "I am looking for a Job. My technical skills are : "
-    return model_call(
+    return perplexity_model_call(
         request.model, 
         f"""{pre_text} {request.user_input}
            Search all job listings based on my preferences and skills.
-           Please give me the top 50 job listings based on my skills""", 
+           I need the following details for each job:
+           job_title: str
+           company_name: str
+           job_location: str
+           job_url: str
+           salary: str
+           skills: List[str]
+           job_type: str
+           education_qualification: str
+           job_description: str
+           Please give me any other top 50 job listings based on my skills.""", 
         response_class=JobListFormat
     )
 
@@ -165,7 +213,7 @@ async def fetch_jobs_from_resume(
     with open(file_location, "wb") as f:
         f.write(await file.read())
     # Extract top technologies from resume text
-    technology_list = model_call(
+    technology_list = perplexity_model_call(
         model, 
         f"""Fetch all top 10 technologies from the resume content. 
            Just give me the keywords of the technology like wordpress, Python, Java etc.. 
