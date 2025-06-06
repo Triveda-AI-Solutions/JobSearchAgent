@@ -99,44 +99,6 @@ def perplexity_model_call(model: str, user_input: str, response_class: BaseModel
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- OpenAI API Call Helper --- 
-
-OPENAI_URL = "https://api.openai.com/v1/chat/completions"
-
-def openai_model_call(model: str, user_input: str, response_class: BaseModel):
-    """
-    Calls the OpenAI API with the given model and user input.
-    Returns the response parsed as the specified response_class.
-    """
-    payload = {
-        "model": model,
-        "messages": [
-            {
-                "role": "system",
-                "content": "Be precise and concise. Do not give any explanation or any other text. Respond in valid JSON matching the expected schema."
-            },
-            {
-                "role": "user",
-                "content": user_input
-            }
-        ],
-        "temperature": 0.2,
-        "max_tokens": 1024
-    }
-    headers = {
-        "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
-        "Content-Type": "application/json"
-    }
-    try:
-        response = requests.post(OPENAI_URL, headers=headers, json=payload)
-        response.raise_for_status()
-        data = response.json()
-        # Expecting the model to return a JSON string in the message content
-        return json.loads(data["choices"][0]["message"]["content"])
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 # --- FastAPI Endpoints ---
 
 @app.get("/")
