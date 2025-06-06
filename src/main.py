@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Form, Body
 from pydantic import BaseModel
 from typing import List, Optional
 import requests
@@ -59,7 +59,15 @@ class JobListFormat(BaseModel):
     """
     Response model for a list of job listings.
     """
+    output_text: Optional[str] = None
+    technology_list: Optional[List[str]] = None
     jobs: List[Job]
+    jobs_count: int
+    
+# Ensure the directory for storing resumes exists
+from datetime import datetime 
+if not os.path.exists("all_resumes"):
+    os.makedirs("all_resumes")
 
 # --- Perplexity API Call Helper ---
 
@@ -99,26 +107,73 @@ def perplexity_model_call(model: str, user_input: str, response_class: BaseModel
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # --- FastAPI Endpoints ---
 
-@app.get("/")
-def read_root():
+@app.post("/fetch_jobs", response_model=JobListFormat)
+async def fetch_jobs(
+    model: str = Form("sonar-pro"),
+    user_input: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+):
     """
-    Root endpoint for health check.
+    Fetch job listings based on user prompt or uploaded resume.
+    - If 'file' is provided, extract technologies from resume and search jobs.
+    - If 'user_input' is provided, search jobs based on prompt.
     """
-    return {"message": "Welcome to the JobSearchAgent!"}
-
-@app.post("/jobs", response_model=JobListFormat)
-async def fetch_jobs_from_prompt(request: ModelRequest):
-    """
-    Fetch job listings based on the user's search preferences.
-    - model: The model to use for the request.
-    - user_input: The user's input text containing job search preferences.
-    """
-    pre_text = "My request is : " if request.type == "prompt" else "I am looking for a Job. My technical skills are : "
-    return perplexity_model_call(
-        request.model, 
-        f"""{pre_text} {request.user_input}
+    if file:
+        try:
+            content_type = file.content_type
+            text = ""
+            file_bytes = await file.read()
+            file_stream = BytesIO(file_bytes)
+            if content_type == "application/pdf":
+                reader = PyPDF2.PdfReader(file_stream)
+                for page in reader.pages:
+                    text += page.extract_text() + "\n"
+                file_extension = ".pdf"
+            elif content_type in [
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/msword"
+            ]:
+                doc = Document(file_stream)
+                for para in doc.paragraphs:
+                    text += para.text + "\n"
+                file_extension = ".docx"
+            else:
+                raise HTTPException(status_code=400, detail="Unsupported file type")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+        # Save the uploaded resume
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_location = f"all_resumes/{file.filename}_{timestamp}{file_extension}"
+        with open(file_location, "wb") as f_out:
+            f_out.write(file_bytes)
+        # Extract top technologies from resume text
+        technology_list = perplexity_model_call(
+            model,
+            f"""Fetch all top 10 technologies from the resume content. 
+               Just give me the keywords of the technology like wordpress, Python, Java etc.. 
+               Please give me the top 10 technologies from the resume.
+               Do not give me any explanation or any other text.
+               The content is : {text}""",
+            response_class=TechFormat
+        )["list_of_tech"]
+        technology_string = ", ".join(technology_list)
+        pre_text = f"I am looking for a Job. My technical skills are : {technology_string}."
+        output_text = f"Based on your technologies from the resume: {technology_string}"
+    if user_input and not file:
+        pre_text = f"My request is : {user_input}."
+        output_text = f"Based on your request: {user_input}"
+        technology_list = []
+    if user_input and file:
+        pre_text = pre_text + f" My request is : {user_input}."
+        output_text = f"Based on your request: {user_input} and technologies from the resume: {technology_string}"
+    if not user_input and not file:
+        raise HTTPException(status_code=400, detail="Either user_input or file must be provided.")
+    jobs = perplexity_model_call(
+        model,
+        f"""{pre_text}
            Search all job listings based on my preferences and skills.
            I need the following details for each job:
            job_title: str
@@ -130,64 +185,38 @@ async def fetch_jobs_from_prompt(request: ModelRequest):
            job_type: str
            education_qualification: str
            job_description: str
-           Please give me any other top 50 job listings based on my skills.""", 
+           Please give me any other top 5 job listings based on my skills.""",
         response_class=JobListFormat
-    )
+    )["jobs"]
 
-# Ensure the directory for storing resumes exists
-from datetime import datetime 
-if not os.path.exists("all_resumes"):
-    os.makedirs("all_resumes")
+    return {
+        "output_text": output_text,
+        "technology_list": technology_list,
+        "jobs": jobs, 
+        "jobs_count": len(jobs)
+        }
 
-@app.post("/jobs_from_resume", response_model=JobListFormat)
-async def fetch_jobs_from_resume(
-    model: str = Form(...),
-    file: UploadFile = File(...)
+
+@app.post("/question_on_jobs", response_model=JobListFormat)
+async def question_on_jobs(
+    model: str = Form("sonar-pro"),
+    user_input: str = Form(None),
+    known_jobs: List[Job] = Body(None),
 ):
-    """
-    Extracts text from a PDF or DOCX resume, identifies top technologies,
-    and fetches job listings based on those technologies.
-    - model: The model to use for the request.
-    - file: The resume file in binary format.
-    """
-    try:
-        content_type = file.content_type
-        text = ""
-        file_bytes = await file.read()
-        file_stream = BytesIO(file_bytes)
-        if content_type == "application/pdf":
-            reader = PyPDF2.PdfReader(file_stream)
-            for page in reader.pages:
-                text += page.extract_text() + "\n"
-            file_extension = ".pdf"
-        elif content_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
-            doc = Document(file_stream)
-            for para in doc.paragraphs:
-                text += para.text + "\n"
-            file_extension = ".docx"
-        else:
-            raise HTTPException(status_code=400, detail="Unsupported file type")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    # Save the uploaded resume
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_location = f"all_resumes/{file.filename}_{timestamp}{file_extension}"
-    with open(file_location, "wb") as f:
-        f.write(await file.read())
-    # Extract top technologies from resume text
-    technology_list = perplexity_model_call(
-        model, 
-        f"""Fetch all top 10 technologies from the resume content. 
-           Just give me the keywords of the technology like wordpress, Python, Java etc.. 
-           Please give me the top 10 technologies from the resume.
-           Do not give me any explanation or any other text.
-           The content is : {text}""",
-        response_class=TechFormat
-    )
-    # Use extracted technologies to fetch job listings
-    request = ModelRequest(model=model, user_input=", ".join(technology_list["list_of_tech"]), type="tech_list")
-    job_list = await fetch_jobs_from_prompt(request)
-    return job_list
+    output_text = f"Based on your request: {user_input}" 
+    jobs = perplexity_model_call(
+        model,
+        f"""I already know about these jobs: {known_jobs}.
+            My request is : {user_input}
+            Give me a list of jobs that match my request.""",
+        response_class=JobListFormat
+    )["jobs"]
+
+    return {"output_text": output_text,
+            "jobs": jobs,
+            "jobs_count": len(jobs)
+            }
+
 
 @app.get("/get_uploaded_resumes_list")
 async def get_uploaded_resumes():
